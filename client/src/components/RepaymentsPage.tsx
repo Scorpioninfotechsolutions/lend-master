@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar, DollarSign, TrendingUp, AlertCircle, Filter, Download } from "lucide-react";
 
 interface RepaymentsPageProps {
-  userRole?: "admin" | "lender" | "borrower";
+  userRole?: "admin" | "lender" | "borrower" | "referrer";
 }
 
 const RepaymentsPage = ({ userRole = "lender" }: RepaymentsPageProps) => {

@@ -77,7 +77,10 @@ const Sidebar = ({ userRole, onNavigate }: SidebarProps) => {
                 key={item.view}
                 variant="ghost"
                 className="w-full justify-start text-sm sm:text-base py-2 sm:py-3 px-3 sm:px-4 h-auto"
-                onClick={() => onNavigate(item.view)}
+                onClick={() => {
+                  console.log(`Sidebar navigating to: ${item.view} for ${userRole} role`);
+                  onNavigate(item.view);
+                }}
               >
                 <Icon className="mr-2 sm:mr-3 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
                 <span className="truncate">{item.label}</span>

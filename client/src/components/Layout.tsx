@@ -1,10 +1,10 @@
-
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { LogOut, Menu, Bell } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useAuth } from "../contexts/AuthContext";
 import Sidebar from "./Sidebar";
 import ProfileDashboard from "./ProfileDashboard";
 
@@ -18,9 +18,20 @@ interface LayoutProps {
 const Layout = ({ children, userRole, onNavigate, onLogout }: LayoutProps) => {
   const [showProfile, setShowProfile] = useState(false);
   const { t } = useLanguage();
+  const { user, getFullImageUrl } = useAuth();
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+
+  // Update profile image URL whenever user changes
+  useEffect(() => {
+    if (user?.profilePicture) {
+      const fullUrl = getFullImageUrl(user.profilePicture) || '';
+      setProfileImageUrl(fullUrl);
+    } else {
+      setProfileImageUrl(null);
+    }
+  }, [user, getFullImageUrl]);
 
   const handleLogout = () => {
-    console.log("Logout clicked");
     onLogout();
   };
 
@@ -33,6 +44,10 @@ const Layout = ({ children, userRole, onNavigate, onLogout }: LayoutProps) => {
   };
 
   const getAvatarLetter = () => {
+    if (user?.name) {
+      return user.name.charAt(0).toUpperCase();
+    }
+    
     switch (userRole) {
       case "admin": return "A";
       case "lender": return "L";
@@ -58,6 +73,11 @@ const Layout = ({ children, userRole, onNavigate, onLogout }: LayoutProps) => {
                 <Sidebar userRole={userRole} onNavigate={onNavigate} />
               </SheetContent>
             </Sheet>
+            <img 
+              src="/logo.webp" 
+              alt="Lend Master Logo" 
+              className="h-8 w-auto mr-2" 
+            />
             <h1 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-900">{t('app.name')}</h1>
           </div>
           <div className="flex items-center space-x-2 sm:space-x-4">
@@ -65,9 +85,16 @@ const Layout = ({ children, userRole, onNavigate, onLogout }: LayoutProps) => {
               <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
             <Avatar className="cursor-pointer h-8 w-8 sm:h-10 sm:w-10" onClick={handleProfileClick}>
-              <AvatarFallback className="text-xs sm:text-sm">
-                {getAvatarLetter()}
-              </AvatarFallback>
+              {profileImageUrl ? (
+                <AvatarImage 
+                  src={profileImageUrl} 
+                  alt={user?.name || "User"}
+                />
+              ) : (
+                <AvatarFallback className="text-xs sm:text-sm">
+                  {getAvatarLetter()}
+                </AvatarFallback>
+              )}
             </Avatar>
             <Button variant="ghost" size="icon" onClick={handleLogout}>
               <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />

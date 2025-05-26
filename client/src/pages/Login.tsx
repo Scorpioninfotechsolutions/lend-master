@@ -1,32 +1,42 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useAuth } from "../contexts/AuthContext";
+import { useToast } from "@/components/ui/use-toast";
 
-interface LoginProps {
-  onLogin: (role: "admin" | "lender" | "borrower" | "referrer") => void;
-}
-
-const Login = ({ onLogin }: LoginProps) => {
-  const [email, setEmail] = useState("");
+const Login = () => {
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"admin" | "lender" | "borrower" | "referrer">("lender");
   const { t } = useLanguage();
+  const { login, error, loading, clearError } = useAuth();
+  const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Login attempt:", {
-      email,
-      password,
-      role
-    });
-    
-    // Call the parent's login handler with the selected role
-    onLogin(role);
+    clearError();
+
+    try {
+      await login(username, password, role);
+    } catch (err) {
+      console.error("Authentication error:", err);
+    }
   };
+
+  // Show error toast when error changes
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Error",
+        description: error,
+        variant: "destructive",
+      });
+    }
+  }, [error, toast]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-zinc-800 to-zinc-900 px-4 py-8">
@@ -51,15 +61,15 @@ const Login = ({ onLogin }: LoginProps) => {
         </CardHeader>
         
         <CardContent className="relative z-10 space-y-6 pb-8">
-          <form onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5">            
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm text-zinc-300">{t('login.email')}</Label>
+              <Label htmlFor="username" className="text-sm text-zinc-300">{t('login.username')}</Label>
               <Input 
-                id="email" 
-                type="email" 
-                placeholder={t('login.email')} 
-                value={email} 
-                onChange={e => setEmail(e.target.value)} 
+                id="username" 
+                type="text" 
+                placeholder={t('login.username')} 
+                value={username} 
+                onChange={e => setUsername(e.target.value)} 
                 required 
                 className="bg-zinc-800/70 border-zinc-700 text-zinc-200 placeholder:text-zinc-500 focus:border-zinc-500 focus:ring-zinc-500"
               />
@@ -107,8 +117,9 @@ const Login = ({ onLogin }: LoginProps) => {
             <Button 
               type="submit" 
               className="w-full py-3 bg-gradient-to-r from-zinc-700 to-zinc-600 hover:from-zinc-600 hover:to-zinc-500 text-zinc-100 font-medium text-base tracking-wide border border-zinc-600 shadow-lg transition-all"
+              disabled={loading}
             >
-              {t('login.signIn')}
+              {loading ? 'Please wait...' : t('login.signIn')}
             </Button>
           </form>
         </CardContent>
