@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -67,7 +66,7 @@ const BorrowersTable = ({ userRole, filteredBorrowers }: BorrowersTableProps) =>
                 <TableCell>{borrower.referrer}</TableCell>
                 <TableCell>
                   <Badge className={getStatusColor(borrower.status)}>
-                    {borrower.status === 'Active' ? t('common.active') : 
+                    {borrower.status === 'Active' ? t('Active') : 
                      borrower.status === 'Completed' ? t('common.completed') : borrower.status}
                   </Badge>
                 </TableCell>

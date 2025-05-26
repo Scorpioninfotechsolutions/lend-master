@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Activity, User, DollarSign, Settings, CalendarIcon, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Download, FileDown } from "lucide-react";
+import { Activity, User, DollarSign, Settings, CalendarIcon, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Download, FileDown, Search, Filter } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +26,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { DateRange } from "react-day-picker";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 interface Lender {
   _id: string;
@@ -82,7 +85,7 @@ const DayView = ({ selectedDate, onSelect }: DayViewProps) => {
   }, [currentDate, onSelect]);
   
   return (
-    <div className="border rounded-md p-4">
+    <div className="border rounded-md p-4 h-[400px] flex flex-col">
       <div className="flex justify-between items-center mb-4">
         <Button variant="outline" size="sm" onClick={goToPreviousDay}>
           <ChevronLeft className="h-4 w-4" />
@@ -103,7 +106,7 @@ const DayView = ({ selectedDate, onSelect }: DayViewProps) => {
         Today
       </Button>
       <div 
-        className="mt-4 py-6 border rounded-md flex items-center justify-center cursor-pointer hover:bg-gray-50"
+        className="mt-4 py-6 border rounded-md flex items-center justify-center cursor-pointer hover:bg-gray-50 flex-grow"
         onClick={() => onSelect(currentDate)}
       >
         <div className="text-center">
@@ -142,7 +145,7 @@ const WeekView = ({ selectedDate, onSelect }: WeekViewProps) => {
   });
   
   return (
-    <div className="border rounded-md p-4">
+    <div className="border rounded-md p-4 h-[400px] flex flex-col">
       <div className="flex justify-between items-center mb-4">
         <Button variant="outline" size="sm" onClick={goToPreviousWeek}>
           <ChevronLeft className="h-4 w-4" />
@@ -163,23 +166,30 @@ const WeekView = ({ selectedDate, onSelect }: WeekViewProps) => {
       >
         Current Week
       </Button>
-      <div className="mt-4 grid grid-cols-7 gap-1">
-        {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day, index) => (
-          <div key={`header-${index}`} className="text-center text-xs font-medium text-gray-500">
-            {day}
-          </div>
-        ))}
-        {daysOfWeek.map((day, index) => (
-          <div
-            key={`day-${index}`}
-            className={`text-center p-2 border rounded-md cursor-pointer hover:bg-gray-50 ${
-              isSameDay(day, selectedDate) ? "bg-primary text-primary-foreground" : ""
-            }`}
-            onClick={() => onSelect(day)}
-          >
-            {format(day, "d")}
-          </div>
-        ))}
+      <div className="flex-grow flex items-center justify-center">
+        <div className="mt-4 grid grid-cols-7 gap-1">
+          {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day, index) => (
+            <div key={`header-${index}`} className="text-center text-xs font-medium text-gray-500 w-10">
+              {day}
+            </div>
+          ))}
+          {daysOfWeek.map((day, index) => {
+            const isSelected = isSameDay(day, selectedDate);
+            return (
+              <div
+                key={`day-${index}`}
+                className={`text-center p-2 border rounded-md cursor-pointer w-10 h-10 flex items-center justify-center ${
+                  isSelected 
+                    ? "bg-primary text-primary-foreground" 
+                    : "hover:bg-gray-50 hover:text-gray-900"
+                }`}
+                onClick={() => onSelect(day)}
+              >
+                {format(day, "d")}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -192,8 +202,18 @@ const AdminLogs = () => {
 
   // State for lenders
   const [lenders, setLenders] = useState<Lender[]>([]);
+  const [filteredLenders, setFilteredLenders] = useState<Lender[]>([]);
   const [loading, setLoading] = useState(true);
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
+  
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const ITEMS_PER_PAGE = 9; // 9 cards per page
   
   // State for activity logs dialog
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -215,6 +235,19 @@ const AdminLogs = () => {
     fetchLenders();
   }, []);
 
+  // Apply search and filters whenever they change
+  useEffect(() => {
+    applySearchAndFilters();
+  }, [lenders, searchQuery, statusFilter]);
+
+  // Apply pagination when filtered lenders change
+  useEffect(() => {
+    setTotalPages(Math.ceil(filteredLenders.length / ITEMS_PER_PAGE));
+    if (currentPage > Math.ceil(filteredLenders.length / ITEMS_PER_PAGE) && filteredLenders.length > 0) {
+      setCurrentPage(1);
+    }
+  }, [filteredLenders]);
+
   // Fetch activity logs when date or lender changes
   useEffect(() => {
     if (selectedLender && isDialogOpen) {
@@ -227,6 +260,7 @@ const AdminLogs = () => {
       setLoading(true);
       const response = await axios.get('/logs/lenders');
       setLenders(response.data.data);
+      setFilteredLenders(response.data.data);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -237,6 +271,41 @@ const AdminLogs = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Apply search and filters to the lenders list
+  const applySearchAndFilters = () => {
+    let filtered = [...lenders];
+
+    // Apply search
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        lender => 
+          lender.name.toLowerCase().includes(query) || 
+          lender.email.toLowerCase().includes(query) ||
+          lender.username.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply status filter
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(lender => lender.status.toLowerCase() === statusFilter.toLowerCase());
+    }
+
+    setFilteredLenders(filtered);
+  };
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // Get current page items
+  const getCurrentPageItems = () => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return filteredLenders.slice(startIndex, endIndex);
   };
 
   const fetchActivityLogs = async () => {
@@ -411,7 +480,35 @@ const AdminLogs = () => {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <h1 className="text-2xl sm:text-3xl font-bold">{t('logs.activityLogs')}</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <h1 className="text-2xl sm:text-3xl font-bold">{t('logs.activityLogs')}</h1>
+        
+        {/* Search and Filter Bar - now positioned to the right of the title */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder={`${t('common.search')} ${t('lenders.title')}...`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 w-full sm:w-[200px]"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-gray-400" />
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder={t('lenders.filterByStatus')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t('common.all')}</SelectItem>
+                <SelectItem value="active">{t('Active')}</SelectItem>
+                <SelectItem value="inactive">{t('Inactive')}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
 
       {loading ? (
         <div className="text-center py-8">
@@ -419,42 +516,76 @@ const AdminLogs = () => {
           <p className="mt-2 text-sm text-gray-500">{t('common.loading')}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {lenders.map((lender) => (
-            <Card key={lender._id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <div className="flex items-center space-x-2">
-                    <Avatar>
-                      {lender.profilePicture && !imageErrors[lender._id] ? (
-                        <AvatarImage 
-                          src={getFullImageUrl(lender.profilePicture)} 
-                          onError={() => handleImageError(lender._id)}
-                        />
-                      ) : (
-                        <AvatarFallback>{lender.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                      )}
-                    </Avatar>
-                    <div>
-                      <CardTitle className="text-base sm:text-lg">{lender.name}</CardTitle>
-                      <CardDescription className="text-xs sm:text-sm">{lender.email}</CardDescription>
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {getCurrentPageItems().map((lender) => (
+              <Card key={lender._id} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center space-x-2">
+                      <Avatar>
+                        {lender.profilePicture && !imageErrors[lender._id] ? (
+                          <AvatarImage 
+                            src={getFullImageUrl(lender.profilePicture)} 
+                            onError={() => handleImageError(lender._id)}
+                          />
+                        ) : (
+                          <AvatarFallback>{lender.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                        )}
+                      </Avatar>
+                      <div>
+                        <CardTitle className="text-base sm:text-lg">{lender.name}</CardTitle>
+                        <CardDescription className="text-xs sm:text-sm">{lender.email}</CardDescription>
+                      </div>
                     </div>
+                    <Badge className={getStatusColor(lender.status)}>{lender.status}</Badge>
                   </div>
-                  <Badge className={getStatusColor(lender.status)}>{lender.status}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  onClick={() => viewLenderLogs(lender)} 
-                  className="w-full mt-2"
-                  variant="outline"
-                >
-                  {t('common.view')} {t('logs.activityLogs')}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardHeader>
+                <CardContent>
+                  <Button 
+                    onClick={() => viewLenderLogs(lender)} 
+                    className="w-full mt-2"
+                    variant="outline"
+                  >
+                    {t('common.view')} {t('logs.activityLogs')}
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {filteredLenders.length > 0 && (
+            <Pagination className="mt-6">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious 
+                    onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+                
+                {Array.from({length: totalPages}, (_, i) => i + 1).map(page => (
+                  <PaginationItem key={page}>
+                    <PaginationLink
+                      onClick={() => handlePageChange(page)}
+                      isActive={page === currentPage}
+                    >
+                      {page}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                
+                <PaginationItem>
+                  <PaginationNext 
+                    onClick={() => handlePageChange(Math.min(currentPage + 1, totalPages))}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </>
       )}
 
       {/* Activity Logs Dialog */}
@@ -501,14 +632,16 @@ const AdminLogs = () => {
               )}
               
               {viewType === "month" && (
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={handleDateSelect}
-                  className="border rounded-md mx-auto"
-                  showOutsideDays={true}
-                  fixedWeeks={true}
-                />
+                <div className="h-[400px] flex items-start">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={handleDateSelect}
+                    className="border rounded-md mx-auto"
+                    showOutsideDays={true}
+                    fixedWeeks={true}
+                  />
+                </div>
               )}
             </div>
             

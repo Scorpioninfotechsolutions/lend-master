@@ -259,4 +259,8 @@ export const tamilTranslations: Translations = {
   'common.monthly': 'மாதாந்திர',
   'common.to': 'க்கு',
   'common.calendar': 'நாள்காட்டி',
+  // Status translation values
+  'Active': 'செயலில்',
+  'Inactive': 'செயலில் இல்லை',
+  'common.all': 'அனைத்தும்',
 };

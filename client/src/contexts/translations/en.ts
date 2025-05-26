@@ -239,4 +239,8 @@ export const englishTranslations: Translations = {
   'common.back': 'Back',
   'common.to': 'to',
   'common.calendar': 'Calendar',
+  // Status translation values
+  'Active': 'Active',
+  'Inactive': 'Inactive',
+  'common.all': 'All',
 };
