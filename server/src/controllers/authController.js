@@ -248,6 +248,58 @@ exports.updateUser = async (req, res, next) => {
   }
 };
 
+// Verify password for sensitive operations => /api/v1/auth/verify-password
+exports.verifyPassword = async (req, res, next) => {
+  try {
+    const { password } = req.body;
+    console.log(`Verifying password for user: ${req.user.id}`);
+
+    // Check if password is entered
+    if (!password) {
+      console.log('Password not provided in request');
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter your password'
+      });
+    }
+
+    // Find user in database
+    const user = await User.findById(req.user.id).select('+password');
+
+    if (!user) {
+      console.log(`User not found with ID: ${req.user.id}`);
+      return res.status(401).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check if password is correct
+    const isPasswordMatched = await user.comparePassword(password);
+    console.log(`Password verification result: ${isPasswordMatched ? 'Success' : 'Failure'}`);
+
+    if (!isPasswordMatched) {
+      return res.status(401).json({
+        success: false,
+        message: 'Incorrect password'
+      });
+    }
+
+    // Password is correct
+    res.status(200).json({
+      success: true,
+      message: 'Password verified successfully'
+    });
+  } catch (error) {
+    console.error('Password verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error verifying password',
+      error: error.message
+    });
+  }
+};
+
 // Delete user => /api/v1/auth/users/:id
 exports.deleteUser = async (req, res, next) => {
   try {

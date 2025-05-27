@@ -84,10 +84,14 @@ app.use('/uploads', express.static(uploadsDir, {
 // Import routes
 const authRoutes = require('./routes/auth');
 const activityLogRoutes = require('./routes/activityLogs');
+const borrowersRoutes = require('./routes/borrowers');
+const adminRoutes = require('./routes/admin');
 
 // Mount routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/logs', activityLogRoutes);
+app.use('/api/v1/borrowers', borrowersRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {

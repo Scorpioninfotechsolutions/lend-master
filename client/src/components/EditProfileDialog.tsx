@@ -217,6 +217,7 @@ const EditProfileDialog = ({ open, onClose }: EditProfileDialogProps) => {
               value={formData.name}
               onChange={handleChange}
               className="col-span-3"
+              autoComplete="off"
             />
           </div>
           
@@ -230,6 +231,7 @@ const EditProfileDialog = ({ open, onClose }: EditProfileDialogProps) => {
               value={formData.phone}
               onChange={handleChange}
               className="col-span-3"
+              autoComplete="off"
             />
           </div>
           
@@ -244,6 +246,7 @@ const EditProfileDialog = ({ open, onClose }: EditProfileDialogProps) => {
               value={formData.dob}
               onChange={handleChange}
               className="col-span-3"
+              autoComplete="off"
             />
           </div>
           
@@ -257,6 +260,7 @@ const EditProfileDialog = ({ open, onClose }: EditProfileDialogProps) => {
               value={formData.address}
               onChange={handleChange}
               className="col-span-3"
+              autoComplete="off"
             />
           </div>
         </div>

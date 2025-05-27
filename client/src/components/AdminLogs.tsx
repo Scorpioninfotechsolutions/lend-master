@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Activity, User, DollarSign, Settings, CalendarIcon, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Download, FileDown, Search, Filter } from "lucide-react";
+import { Activity, User, DollarSign, Settings, CalendarIcon, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Download, FileDown, Search, Filter, Info, Users } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +37,12 @@ interface Lender {
   email: string;
   status: string;
   profilePicture?: string;
+}
+
+interface LenderStats {
+  totalBorrowers: number;
+  totalLoans: number;
+  totalAmount: number;
 }
 
 interface ActivityLog {
@@ -225,6 +231,11 @@ const AdminLogs = () => {
   const [detailedLogView, setDetailedLogView] = useState(false);
   const [expandedLogs, setExpandedLogs] = useState<Record<string, boolean>>({});
 
+  // State for lender details dialog
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [lenderStats, setLenderStats] = useState<LenderStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+
   // Export related state
   const [isExporting, setIsExporting] = useState(false);
   const [exportDateRange, setExportDateRange] = useState<DateRange | undefined>(undefined);
@@ -347,12 +358,35 @@ const AdminLogs = () => {
       setLogsLoading(false);
     }
   };
+
+  const fetchLenderStats = async (lenderId: string) => {
+    try {
+      setStatsLoading(true);
+      const response = await axios.get(`/logs/lender-stats/${lenderId}`);
+      setLenderStats(response.data.data);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch lender statistics",
+        variant: "destructive",
+      });
+      console.error('Error fetching lender statistics:', error);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
   
   const viewLenderLogs = (lender: Lender) => {
     setSelectedLender(lender);
     setSelectedDate(new Date());
     setViewType("day");
     setIsDialogOpen(true);
+  };
+
+  const viewLenderDetails = (lender: Lender) => {
+    setSelectedLender(lender);
+    setIsDetailsDialogOpen(true);
+    fetchLenderStats(lender._id);
   };
   
   const handleDateSelect = (date: Date | undefined) => {
@@ -542,13 +576,23 @@ const AdminLogs = () => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <Button 
-                    onClick={() => viewLenderLogs(lender)} 
-                    className="w-full mt-2"
-                    variant="outline"
-                  >
-                    {t('common.view')} {t('logs.activityLogs')}
-                  </Button>
+                  <div className="flex gap-2 mt-2">
+                    <Button 
+                      onClick={() => viewLenderLogs(lender)} 
+                      className="flex-1"
+                      variant="outline"
+                    >
+                      {t('common.view')} {t('logs.activityLogs')}
+                    </Button>
+                    <Button 
+                      onClick={() => viewLenderDetails(lender)} 
+                      className="flex-none"
+                      variant="outline"
+                    >
+                      <Info className="h-4 w-4" />
+                      <span className="ml-1 hidden sm:inline">View Details</span>
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -753,6 +797,65 @@ const AdminLogs = () => {
               )}
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Lender Details Dialog */}
+      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedLender?.name} - Details
+            </DialogTitle>
+            <DialogDescription>
+              Lender statistics and information
+            </DialogDescription>
+          </DialogHeader>
+
+          {statsLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="mt-2 text-sm text-gray-500">{t('common.loading')}</p>
+            </div>
+          ) : (
+            <div className="space-y-4 py-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center">
+                    <Users className="h-4 w-4 mr-2" />
+                    Total Borrowers
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{lenderStats?.totalBorrowers || 0}</div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center">
+                    <Activity className="h-4 w-4 mr-2" />
+                    Total Loans
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{lenderStats?.totalLoans || 0}</div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center">
+                    <DollarSign className="h-4 w-4 mr-2" />
+                    Total Amount
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">₹{(lenderStats?.totalAmount || 0).toLocaleString()}</div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -57,6 +56,7 @@ const LoanForm = () => {
                     value={formData.borrowerName}
                     onChange={(e) => handleChange("borrowerName", e.target.value)}
                     required
+                    autoComplete="off"
                   />
                 </div>
                 <div>
@@ -66,6 +66,7 @@ const LoanForm = () => {
                     value={formData.borrowerPhone}
                     onChange={(e) => handleChange("borrowerPhone", e.target.value)}
                     required
+                    autoComplete="off"
                   />
                 </div>
                 <div>
@@ -75,6 +76,7 @@ const LoanForm = () => {
                     type="email"
                     value={formData.borrowerEmail}
                     onChange={(e) => handleChange("borrowerEmail", e.target.value)}
+                    autoComplete="off"
                   />
                 </div>
               </div>
@@ -85,6 +87,7 @@ const LoanForm = () => {
                   value={formData.borrowerAddress}
                   onChange={(e) => handleChange("borrowerAddress", e.target.value)}
                   rows={3}
+                  autoComplete="off"
                 />
               </div>
             </div>
@@ -101,6 +104,7 @@ const LoanForm = () => {
                     value={formData.loanAmount}
                     onChange={(e) => handleChange("loanAmount", e.target.value)}
                     required
+                    autoComplete="off"
                   />
                 </div>
                 <div>
@@ -111,6 +115,7 @@ const LoanForm = () => {
                     value={formData.startDate}
                     onChange={(e) => handleChange("startDate", e.target.value)}
                     required
+                    autoComplete="off"
                   />
                 </div>
               </div>
@@ -142,6 +147,7 @@ const LoanForm = () => {
                     value={formData.loanType === "interest-only" ? "5" : "3"}
                     onChange={(e) => handleChange("interestRate", e.target.value)}
                     disabled
+                    autoComplete="off"
                   />
                 </div>
                 {formData.loanType === "emi" && (
@@ -152,6 +158,7 @@ const LoanForm = () => {
                       type="number"
                       value="10"
                       disabled
+                      autoComplete="off"
                     />
                   </div>
                 )}
@@ -180,6 +187,7 @@ const LoanForm = () => {
                   onChange={(e) => handleChange("notes", e.target.value)}
                   rows={3}
                   placeholder={t('loan.notesPlaceholder')}
+                  autoComplete="off"
                 />
               </div>
             </div>

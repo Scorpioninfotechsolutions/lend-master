@@ -58,6 +58,70 @@ router.get(
   }
 );
 
+// Get lender statistics (admin only)
+router.get(
+  '/lender-stats/:lenderId',
+  isAuthenticated,
+  authorizeRoles('admin'),
+  async (req, res) => {
+    try {
+      const { lenderId } = req.params;
+      
+      // Get all borrowers associated with this lender from activity logs
+      // This is a simplified approach assuming borrowers have activities with lenders
+      const borrowerIds = await ActivityLog.distinct('user', {
+        relatedUser: new mongoose.Types.ObjectId(lenderId),
+        'user.role': 'borrower'
+      });
+      
+      // Count unique borrowers
+      const totalBorrowers = borrowerIds.length;
+      
+      // Count loan-related activities (type: 'loan')
+      const totalLoans = await ActivityLog.countDocuments({
+        $or: [
+          { user: new mongoose.Types.ObjectId(lenderId) },
+          { relatedUser: new mongoose.Types.ObjectId(lenderId) }
+        ],
+        type: 'loan'
+      });
+      
+      // Calculate total amount from loan activities
+      // Assuming loan amount is stored in metadata.amount field
+      const loanActivities = await ActivityLog.find({
+        $or: [
+          { user: new mongoose.Types.ObjectId(lenderId) },
+          { relatedUser: new mongoose.Types.ObjectId(lenderId) }
+        ],
+        type: 'loan',
+        'metadata.amount': { $exists: true }
+      });
+      
+      let totalAmount = 0;
+      loanActivities.forEach(activity => {
+        if (activity.metadata && activity.metadata.amount) {
+          totalAmount += parseFloat(activity.metadata.amount);
+        }
+      });
+      
+      res.status(200).json({
+        success: true,
+        data: {
+          totalBorrowers,
+          totalLoans,
+          totalAmount
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Server Error',
+        error: error.message
+      });
+    }
+  }
+);
+
 // Get activity logs for a specific lender (admin only)
 router.get(
   '/lender/:lenderId',
@@ -180,12 +244,21 @@ router.post(
     try {
       const { action, description, relatedUser, type, metadata } = req.body;
       
+      // Validate type field to ensure it's one of the valid enum values
+      const validTypes = ['auth', 'loan', 'payment', 'system'];
+      if (type && !validTypes.includes(type)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid type value. Must be one of: ${validTypes.join(', ')}`
+        });
+      }
+      
       const log = await ActivityLog.create({
         action,
         description,
         user: req.user.id,
         relatedUser,
-        type,
+        type: type || 'system', // Default to 'system' if not provided
         metadata
       });
 
