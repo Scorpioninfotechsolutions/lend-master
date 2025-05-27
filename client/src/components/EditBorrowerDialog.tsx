@@ -20,10 +20,10 @@ interface EditBorrowerDialogProps {
 
 interface EditableBorrowerData {
   fullName: string;
-  email: string;
+  username: string;
+  password: string;
   phone: string;
   address: string;
-  creditScore: number;
   status: "Active" | "Completed" | "Overdue";
   referrer: string;
   cardNumber?: string;
@@ -43,10 +43,10 @@ const EditBorrowerDialog = ({
   const { t } = useLanguage();
   const [borrowerData, setBorrowerData] = useState<EditableBorrowerData>({
     fullName: "",
-    email: "",
+    username: "",
+    password: "",
     phone: "",
     address: "",
-    creditScore: 0,
     status: "Active",
     referrer: "",
     cardNumber: "",
@@ -74,10 +74,10 @@ const EditBorrowerDialog = ({
       // Populate form with borrower data when it changes
       setBorrowerData({
         fullName: borrower.name,
-        email: borrower.email,
+        username: borrower.username || "",
+        password: "", // Don't pre-fill password for security reasons
         phone: borrower.phone,
         address: borrower.address || "",
-        creditScore: borrower.creditScore,
         status: borrower.status,
         referrer: borrower.referrer,
         cardNumber: "",  // Don't pre-fill sensitive card information
@@ -94,15 +94,20 @@ const EditBorrowerDialog = ({
   };
 
   const handleSave = () => {
+    // Generate email from username (since server requires email)
+    const email = `${borrowerData.username.toLowerCase()}@example.com`;
+    
     // Prepare data for API
     const updatedData = {
       name: borrowerData.fullName,
-      email: borrowerData.email,
+      email: email, // Include email for server compatibility
+      username: borrowerData.username,
       phone: borrowerData.phone,
       address: borrowerData.address,
-      creditScore: borrowerData.creditScore,
       status: borrowerData.status,
       referrer: borrowerData.referrer,
+      // Only include password if it was provided
+      ...(borrowerData.password ? { password: borrowerData.password } : {}),
       // Direct card fields for compatibility with updated User model
       cardNumber: borrowerData.cardNumber || undefined,
       cardName: borrowerData.cardName || undefined,
@@ -163,27 +168,26 @@ const EditBorrowerDialog = ({
                 />
               </div>
               
-              {/* Email and Credit Score */}
+              {/* Username and Password */}
               <div className="space-y-2">
-                <Label htmlFor="edit-email" className="text-sm font-medium">{t('lenders.email')}</Label>
+                <Label htmlFor="edit-username" className="text-sm font-medium">{t('login.username')}</Label>
                 <Input 
-                  id="edit-email" 
-                  type="email"
-                  placeholder={t('lenders.email')}
-                  value={borrowerData.email}
-                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  id="edit-username" 
+                  placeholder={t('login.username')}
+                  value={borrowerData.username}
+                  onChange={(e) => handleInputChange("username", e.target.value)}
                   autoComplete="off"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-creditScore" className="text-sm font-medium">{t('dashboard.creditScore')}</Label>
+                <Label htmlFor="edit-password" className="text-sm font-medium">{t('login.password')}</Label>
                 <Input 
-                  id="edit-creditScore" 
-                  type="number"
-                  placeholder={t('dashboard.creditScore')}
-                  value={borrowerData.creditScore}
-                  onChange={(e) => handleInputChange("creditScore", parseInt(e.target.value))}
-                  autoComplete="off"
+                  id="edit-password" 
+                  type="password"
+                  placeholder={t('login.password') + " (leave empty to keep current)"}
+                  value={borrowerData.password}
+                  onChange={(e) => handleInputChange("password", e.target.value)}
+                  autoComplete="new-password"
                 />
               </div>
               

@@ -12,18 +12,50 @@ const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"admin" | "lender" | "borrower" | "referrer">("lender");
+  const [isFixingAccount, setIsFixingAccount] = useState(false);
   const { t } = useLanguage();
-  const { login, error, loading, clearError } = useAuth();
+  const { login, error, loading, clearError, fixBorrowerAccount } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
+    setIsFixingAccount(false);
 
     try {
+      // First try normal login
       await login(username, password, role);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Authentication error:", err);
+      
+      // For borrowers only, if login fails, try to fix the account
+      if (role === 'borrower' && err?.response?.status === 401) {
+        try {
+          console.log('Borrower login failed, attempting to fix account...');
+          setIsFixingAccount(true);
+          
+          // Try to fix the borrower account
+          await fixBorrowerAccount(username, password);
+          
+          // Try login again after fixing
+          console.log('Account fixed, attempting login again...');
+          await login(username, password, role);
+          
+          toast({
+            title: "Account Fixed",
+            description: "Your account has been repaired. You are now logged in.",
+          });
+        } catch (fixError) {
+          console.error("Failed to fix borrower account:", fixError);
+          toast({
+            title: "Login Failed",
+            description: "We couldn't fix your account automatically. Please contact support.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsFixingAccount(false);
+        }
+      }
     }
   };
 
@@ -117,9 +149,9 @@ const Login = () => {
             <Button 
               type="submit" 
               className="w-full py-3 bg-gradient-to-r from-zinc-700 to-zinc-600 hover:from-zinc-600 hover:to-zinc-500 text-zinc-100 font-medium text-base tracking-wide border border-zinc-600 shadow-lg transition-all"
-              disabled={loading}
+              disabled={loading || isFixingAccount}
             >
-              {loading ? 'Please wait...' : t('login.signIn')}
+              {loading ? 'Please wait...' : (isFixingAccount ? 'Fixing account...' : t('login.signIn'))}
             </Button>
           </form>
         </CardContent>

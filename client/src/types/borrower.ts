@@ -1,12 +1,12 @@
 export interface Borrower {
   id: number;
   name: string;
+  username: string;
   email: string;
   phone: string;
   address?: string;
   totalBorrowed: number;
   activeLoans: number;
-  creditScore: number;
   status: "Active" | "Completed" | "Overdue";
   joinDate: string;
   lastPayment: string;
@@ -17,6 +17,7 @@ export interface Borrower {
   validTil?: string;
   cvv?: string;
   atmPin?: string;
+  profilePicture?: string;
 }
 
 export interface CardDetails {
@@ -30,6 +31,8 @@ export interface CardDetails {
 export interface NewBorrowerData {
   profilePicture: File | null;
   fullName: string;
+  username: string;
+  password: string;
   phone: string;
   address: string;
   idProof: File | null;

@@ -22,6 +22,8 @@ const AddBorrowerDialog = ({ referrers, onAddBorrower }: AddBorrowerDialogProps)
   const [newBorrowerData, setNewBorrowerData] = useState<NewBorrowerData>({
     profilePicture: null,
     fullName: "",
+    username: "",
+    password: "",
     phone: "",
     address: "",
     idProof: null,
@@ -47,23 +49,15 @@ const AddBorrowerDialog = ({ referrers, onAddBorrower }: AddBorrowerDialogProps)
   const handleAddBorrower = () => {
     console.log("Adding new borrower:", newBorrowerData);
     
-    // Generate email from full name
-    const email = newBorrowerData.fullName.toLowerCase().replace(/\s+/g, '.') + '@example.com';
-    
-    // Generate username from full name (first letter of first name + last name)
-    const nameParts = newBorrowerData.fullName.split(' ');
-    const firstName = nameParts[0] || '';
-    const lastName = nameParts.slice(1).join('') || '';
-    const username = (firstName.charAt(0) + lastName).toLowerCase().replace(/[^a-z0-9]/g, '');
-    
-    // Make sure username meets minimum length requirement (3 characters)
-    const validUsername = username.length >= 3 ? username : email.split('@')[0];
+    // Generate email from username (since server requires email)
+    const email = `${newBorrowerData.username.toLowerCase()}@example.com`;
     
     // Format data according to the User model
     onAddBorrower({
       name: newBorrowerData.fullName,
-      email: email,
-      username: validUsername, // Ensure username meets model requirements
+      email: email, // Include email for server compatibility
+      username: newBorrowerData.username,
+      password: newBorrowerData.password,
       phone: newBorrowerData.phone,
       address: newBorrowerData.address,
       referrer: newBorrowerData.referrer,
@@ -81,6 +75,8 @@ const AddBorrowerDialog = ({ referrers, onAddBorrower }: AddBorrowerDialogProps)
     setNewBorrowerData({
       profilePicture: null,
       fullName: "",
+      username: "",
+      password: "",
       phone: "",
       address: "",
       idProof: null,
@@ -177,6 +173,37 @@ const AddBorrowerDialog = ({ referrers, onAddBorrower }: AddBorrowerDialogProps)
                     autoCapitalize="off"
                     spellCheck="false"
                     name={`phone-${Math.random().toString(36).substr(2, 9)}`}
+                  />
+                </div>
+                
+                {/* Username and Password */}
+                <div className="space-y-2">
+                  <Label htmlFor="username" className="text-sm font-medium">{t('login.username')}</Label>
+                  <Input 
+                    id="username" 
+                    placeholder={t('login.username')}
+                    value={newBorrowerData.username}
+                    onChange={(e) => handleInputChange("username", e.target.value)}
+                    autoComplete="nope"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
+                    name={`username-${Math.random().toString(36).substr(2, 9)}`}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password" className="text-sm font-medium">{t('login.password')}</Label>
+                  <Input 
+                    id="password" 
+                    type="password"
+                    placeholder={t('login.password')}
+                    value={newBorrowerData.password}
+                    onChange={(e) => handleInputChange("password", e.target.value)}
+                    autoComplete="new-password"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
+                    name={`password-${Math.random().toString(36).substr(2, 9)}`}
                   />
                 </div>
                 

@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Edit, Phone, Mail, Trash2, AlertTriangle, CreditCard, Eye, EyeOff, Lock, Check, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Edit, Phone, Mail, Trash2, AlertTriangle, CreditCard, Eye, EyeOff, Lock, Check, ShieldAlert, ShieldCheck, User } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 import type { Borrower } from "../types/borrower";
 import {
@@ -26,10 +26,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import VerifyCardDetailsDialog from "./VerifyCardDetailsDialog";
 import api from "../utils/api";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from "../contexts/AuthContext";
 
 interface BorrowersTableProps {
   userRole: "admin" | "lender" | "borrower";
@@ -41,6 +43,7 @@ interface BorrowersTableProps {
 const BorrowersTable = ({ userRole, filteredBorrowers, onEdit, onDelete }: BorrowersTableProps) => {
   const { t } = useLanguage();
   const { toast } = useToast();
+  const { getFullImageUrl } = useAuth();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [borrowerToDelete, setBorrowerToDelete] = useState<Borrower | null>(null);
   const [cardDetailsDialogOpen, setCardDetailsDialogOpen] = useState(false);
@@ -243,6 +246,11 @@ const BorrowersTable = ({ userRole, filteredBorrowers, onEdit, onDelete }: Borro
     setCardDetailsDialogOpen(false);
   };
 
+  // Function to get avatar letter for fallback
+  const getAvatarLetter = (name: string) => {
+    return name.charAt(0).toUpperCase();
+  };
+
   return (
     <>
       <Card>
@@ -268,12 +276,29 @@ const BorrowersTable = ({ userRole, filteredBorrowers, onEdit, onDelete }: Borro
             <TableBody>
               {filteredBorrowers.map((borrower) => (
                 <TableRow key={borrower.id}>
-                  <TableCell className="font-medium">{borrower.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-8 w-8">
+                        {borrower.profilePicture ? (
+                          <AvatarImage 
+                            src={getFullImageUrl(borrower.profilePicture) || ''} 
+                            alt={borrower.name}
+                            className="object-cover"
+                          />
+                        ) : (
+                          <AvatarFallback className="text-xs bg-zinc-200">
+                            {getAvatarLetter(borrower.name)}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      <span>{borrower.name}</span>
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <div className="space-y-1">
                       <div className="flex items-center text-sm">
-                        <Mail className="mr-1 h-3 w-3" />
-                        {borrower.email}
+                        <User className="mr-1 h-3 w-3" />
+                        {borrower.username}
                       </div>
                       <div className="flex items-center text-sm">
                         <Phone className="mr-1 h-3 w-3" />

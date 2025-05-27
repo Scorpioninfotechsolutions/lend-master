@@ -29,6 +29,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   clearError: () => void;
   getFullImageUrl: (path: string | undefined) => string | null;
+  fixBorrowerAccount: (username: string, password: string) => Promise<any>;
 }
 
 // Create context
@@ -170,35 +171,59 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Add a small delay to ensure cookies are cleared
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      console.log(`Attempting login for username: ${username}, role: ${role}`);
+      // Trim whitespace from username to avoid login issues
+      const trimmedUsername = username.trim();
+      
+      console.log(`Attempting login for username: ${trimmedUsername}, role: ${role}`);
       
       // Now attempt the login with role explicitly specified in URL parameter
-      const res = await axios.post(`/auth/login?requested_role=${role}`, { username, password });
-      
-      // Verify role matches what the user selected
-      if (res.data.user.role !== role) {
-        console.error(`Role mismatch: requested ${role}, got ${res.data.user.role}`);
-        setError(`You do not have ${role} permissions. Please login with the correct account type.`);
+      try {
+        const res = await axios.post(`/auth/login?requested_role=${role}`, { 
+          username: trimmedUsername, 
+          password 
+        });
         
-        // Complete reset
-        setUser(null);
-        setIsAuthenticated(false);
-        
-        // Clear cookie again
-        try {
-          await axios.get('/auth/logout');
-        } catch (e) {
-          console.log('Failed to logout after role mismatch');
+        // Verify role matches what the user selected
+        if (res.data.user.role !== role) {
+          console.error(`Role mismatch: requested ${role}, got ${res.data.user.role}`);
+          setError(`You do not have ${role} permissions. Please login with the correct account type.`);
+          
+          // Complete reset
+          setUser(null);
+          setIsAuthenticated(false);
+          
+          // Clear cookie again
+          try {
+            await axios.get('/auth/logout');
+          } catch (e) {
+            console.log('Failed to logout after role mismatch');
+          }
+          
+          return;
         }
         
-        return;
+        // Role matches, set user data and authenticate
+        console.log(`Login successful for ${res.data.user.role} role`);
+        setProcessedUser(res.data.user);
+        setIsAuthenticated(true);
+        setError(null);
+      } catch (error: any) {
+        console.error('API request error:', error);
+        console.error('Error response:', error.response?.data);
+        
+        // Set a more specific error message if available
+        if (error.response?.data?.message) {
+          setError(error.response.data.message);
+        } else if (error.message) {
+          setError(error.message);
+        } else {
+          setError('Login failed. Please try again.');
+        }
+        
+        // Ensure we reset authentication state
+        setUser(null);
+        setIsAuthenticated(false);
       }
-      
-      // Role matches, set user data and authenticate
-      console.log(`Login successful for ${res.data.user.role} role`);
-      setProcessedUser(res.data.user);
-      setIsAuthenticated(true);
-      setError(null);
     } catch (err: any) {
       console.error('Login error:', err);
       setError(err.response?.data?.message || 'Login failed');
@@ -248,6 +273,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         logout,
         clearError,
         getFullImageUrl,
+        // Helper function to fix borrower account issues
+        fixBorrowerAccount: async (username: string, password: string) => {
+          try {
+            console.log(`Attempting to fix borrower account: ${username}`);
+            const response = await axios.get(`/auth/check-borrower/${username}?password=${password}`);
+            console.log('Fix borrower response:', response.data);
+            return response.data;
+          } catch (error) {
+            console.error('Error fixing borrower account:', error);
+            throw error;
+          }
+        }
       }}
     >
       {children}

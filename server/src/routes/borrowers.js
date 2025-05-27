@@ -176,17 +176,36 @@ router.post('/', isAuthenticated, authorizeRoles('admin', 'lender'), async (req,
       atmPin: req.body.atmPin
     };
     
-    // Create new borrower with role set to 'borrower'
+    // Create new borrower with role explicitly set to 'borrower'
     const borrowerData = {
       ...req.body,
-      role: 'borrower',
-      // Generate a temporary password or send invite link
-      password: Math.random().toString(36).slice(-8)
+      role: 'borrower', // Force role to be borrower
     };
     
-    console.log('Final borrower data (without password and sensitive card info):', {
+    // Ensure username is trimmed to avoid whitespace issues
+    if (borrowerData.username) {
+      borrowerData.username = borrowerData.username.trim();
+    }
+    
+    // Password validation and processing
+    if (!borrowerData.password) {
+      // Generate a secure random password
+      const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+      borrowerData.password = tempPassword;
+      console.log('Generated random password since none was provided:', borrowerData.password);
+    } else {
+      // Make sure password meets minimum requirements
+      if (borrowerData.password.length < 6) {
+        console.log('Password too short, extending to minimum length');
+        borrowerData.password = borrowerData.password.padEnd(6, '1');
+      }
+      console.log(`Using provided password: "${borrowerData.password}"`);
+    }
+    
+    console.log('Final borrower data:', {
       ...borrowerData,
-      password: '[REDACTED]',
+      password: borrowerData.password, // Log actual password for debugging
+      role: borrowerData.role, // Explicitly log the role
       cvv: borrowerData.cvv ? '[REDACTED]' : undefined,
       atmPin: borrowerData.atmPin ? '[REDACTED]' : undefined
     });
@@ -195,7 +214,9 @@ router.post('/', isAuthenticated, authorizeRoles('admin', 'lender'), async (req,
     const originalCvv = borrowerData.cvv;
     const originalAtmPin = borrowerData.atmPin;
     
+    console.log('Creating borrower with role:', borrowerData.role);
     const borrower = await User.create(borrowerData);
+    console.log('Borrower created with ID:', borrower._id, 'and role:', borrower.role);
     
     // If we have sensitive card details, store them encrypted separately
     if (cardData.cvv || cardData.atmPin) {

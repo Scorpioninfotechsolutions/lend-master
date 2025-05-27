@@ -33,11 +33,11 @@ const BorrowersPage = ({ userRole = "lender" }: BorrowersPageProps) => {
         const borrowersData = response.data.data.map((borrower: any) => ({
           id: borrower._id,
           name: borrower.name || "",
+          username: borrower.username || "",
           email: borrower.email || "",
           phone: borrower.phone || "",
           totalBorrowed: borrower.totalBorrowed || 0,
           activeLoans: borrower.activeLoans || 0,
-          creditScore: borrower.creditScore || 0,
           status: borrower.status || "Active",
           joinDate: borrower.createdAt || new Date().toISOString(),
           lastPayment: borrower.lastPayment || "",
@@ -47,7 +47,9 @@ const BorrowersPage = ({ userRole = "lender" }: BorrowersPageProps) => {
           cardName: borrower.cardName || "",
           validTil: borrower.validTil || "",
           cvv: borrower.cvv || "",
-          atmPin: borrower.atmPin || ""
+          atmPin: borrower.atmPin || "",
+          // Include profile picture if available
+          profilePicture: borrower.profilePicture || ""
         }));
         setBorrowers(borrowersData);
       } else {
@@ -228,6 +230,7 @@ const BorrowersPage = ({ userRole = "lender" }: BorrowersPageProps) => {
 
   const filteredBorrowers = displayBorrowers.filter(borrower =>
     borrower.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    borrower.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
     borrower.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 

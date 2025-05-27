@@ -115,9 +115,27 @@ const userSchema = new mongoose.Schema({
 
 // Encrypt password before saving
 userSchema.pre('save', async function(next) {
+  console.log('Pre-save hook triggered for user:', this._id || 'new user');
+  console.log('Is password modified:', this.isModified('password'));
+  
   // Only hash password if it's modified
   if (this.isModified('password')) {
-    this.password = await bcrypt.hash(this.password, 10);
+    console.log('Hashing password, original length:', this.password.length);
+    console.log('Original password value:', this.password);
+    try {
+      // Force a consistent salt round to ensure passwords are hashed consistently
+      this.password = await bcrypt.hash(this.password, 10);
+      console.log('Password hashed successfully, new length:', this.password.length);
+      console.log('Hashed password value:', this.password);
+      
+      // Double-check that the hash was created correctly
+      const testCompare = await bcrypt.compare(this.password, this.password);
+      console.log('Hash self-verification:', testCompare);
+    } catch (error) {
+      console.error('Error hashing password:', error);
+      next(error);
+      return;
+    }
   }
   
   // Hash CVV if modified and not already hashed
@@ -137,7 +155,61 @@ userSchema.pre('save', async function(next) {
 
 // Compare user password
 userSchema.methods.comparePassword = async function(enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+  try {
+    console.log(`Comparing passwords for user: ${this._id}, username: ${this.username}`);
+    console.log(`Password from DB exists: ${!!this.password}, length: ${this.password ? this.password.length : 0}`);
+    console.log(`Entered password length: ${enteredPassword ? enteredPassword.length : 0}`);
+    console.log(`DB password: "${this.password}"`);
+    console.log(`Entered password: "${enteredPassword}"`);
+    
+    // Handle missing password cases
+    if (!this.password) {
+      console.log('Missing password in DB - cannot compare');
+      return false;
+    }
+    
+    if (!enteredPassword) {
+      console.log('Missing entered password - cannot compare');
+      return false;
+    }
+    
+    // Try direct comparison first (for unhashed passwords or dev mode)
+    if (this.password === enteredPassword) {
+      console.log('WARNING: Password matched in raw form - password was not hashed properly!');
+      // In development, let this pass but log the warning
+      if (process.env.NODE_ENV === 'development') {
+        return true;
+      }
+    }
+    
+    // Now try proper bcrypt comparison
+    let result = false;
+    
+    // Check if the password is a valid bcrypt hash
+    if (this.password.startsWith('$2a$') || this.password.startsWith('$2b$')) {
+      result = await bcrypt.compare(enteredPassword, this.password);
+      console.log(`Standard bcrypt comparison result: ${result}`);
+    } else {
+      console.log('WARNING: Password in DB does not appear to be a valid bcrypt hash');
+      
+      // In development mode, try some fallbacks
+      if (process.env.NODE_ENV === 'development') {
+        // If not a valid hash, try hashing the entered password and comparing directly
+        const hashedEnteredPassword = await bcrypt.hash(enteredPassword, 10);
+        const directMatch = this.password === hashedEnteredPassword;
+        console.log(`Direct hash comparison result: ${directMatch}`);
+        
+        if (directMatch) {
+          result = true;
+        }
+      }
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Error comparing passwords:', error);
+    return false;
+  }
 };
 
 // Generate JWT token

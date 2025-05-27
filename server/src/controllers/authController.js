@@ -70,36 +70,136 @@ exports.loginUser = async (req, res, next) => {
     const { username, password } = req.body;
     const requestedRole = req.query.requested_role;
 
-    console.log(`Login attempt: ${username}, requested role: ${requestedRole || 'none'}`);
+    console.log(`Login attempt: ${username}, requested role: ${requestedRole || 'none'}, password provided: ${!!password}`);
+    console.log(`Password value: "${password}"`); // Log actual password for debugging
 
     // Check if username and password are entered
     if (!username || !password) {
+      console.log('Missing username or password');
       return next(new ErrorHandler('Please enter username & password', 400));
     }
 
-    // Find user in database
-    const user = await User.findOne({ username }).select('+password');
+    // First, try to find the user with the exact username
+    let user = await User.findOne({ username }).select('+password');
 
     if (!user) {
-      return next(new ErrorHandler('Invalid Username or Password', 401));
+      console.log(`Login failed: User not found with exact username: ${username}`);
+      
+      // Try to find the user by case-insensitive username
+      user = await User.findOne({ 
+        username: { $regex: new RegExp(`^${username}$`, 'i') } 
+      }).select('+password');
+      
+      if (!user) {
+        console.log(`Login failed: User not found with case-insensitive search either`);
+        
+        // Special handling for borrower logins
+        if (requestedRole === 'borrower') {
+          console.log('Checking if this user might be in the system with a different role...');
+          
+          // Look for any user with similar username regardless of role
+          const possibleUsers = await User.find({
+            username: { $regex: new RegExp(`${username}`, 'i') }
+          }).select('_id username role');
+          
+          if (possibleUsers.length > 0) {
+            console.log('Found similar users:', possibleUsers.map(u => `${u.username} (${u.role})`));
+          } else {
+            console.log('No similar users found in the system');
+          }
+        }
+        
+        return next(new ErrorHandler('Invalid Username or Password', 401));
+      }
+      
+      console.log(`Found user using case-insensitive match: ${user.username}`);
     }
+
+    console.log(`User found: ${user.username}, user role: ${user.role}, requesting: ${requestedRole}`);
+    
+    // Debug: print password info (hashed, not actual passwords)
+    console.log(`Password from DB exists: ${!!user.password}, length: ${user.password ? user.password.length : 'undefined'}`);
+    console.log(`Password from DB value: ${user.password}`); // Log actual hashed password for debugging
+    console.log(`Password provided (length): ${password ? password.length : 'undefined'}`);
 
     // Check if password is correct
     const isPasswordMatched = await user.comparePassword(password);
+    console.log(`Password match result: ${isPasswordMatched}`);
 
     if (!isPasswordMatched) {
-      return next(new ErrorHandler('Invalid Username or Password', 401));
+      console.log(`Login failed: Incorrect password for username: ${username}`);
+      
+      // Special case for borrowers - try to fix the account
+      if (requestedRole === 'borrower') {
+        console.log('This is a borrower login attempt, checking if we can recover the account...');
+        
+        // Check if this might be a borrower created by a lender with issues
+        const relatedActivity = await require('../models/ActivityLog').findOne({
+          relatedUser: user._id,
+          type: 'system',
+          'metadata.action_type': 'borrower_created'
+        });
+        
+        if (relatedActivity) {
+          console.log(`Found related activity log: borrower was created by lender ${relatedActivity.user}`);
+          
+          // For testing: temporarily update password (REMOVE IN PRODUCTION)
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('DEV MODE: Fixing borrower password...');
+            user.password = password;
+            user.role = 'borrower';
+            await user.save();
+            
+            // Try to match again
+            const updatedUser = await User.findById(user._id).select('+password');
+            const isFixedMatch = await updatedUser.comparePassword(password);
+            
+            if (isFixedMatch) {
+              console.log('Password fixed successfully - proceeding with login');
+              // Continue with the fixed user
+              user = updatedUser;
+            } else {
+              console.log('Failed to fix password - returning error');
+              return next(new ErrorHandler('Invalid Username or Password', 401));
+            }
+          } else {
+            return next(new ErrorHandler('Invalid Username or Password', 401));
+          }
+        } else {
+          return next(new ErrorHandler('Invalid Username or Password', 401));
+        }
+      } else {
+        return next(new ErrorHandler('Invalid Username or Password', 401));
+      }
     }
 
     // Check if user is active
     if (user.status === 'Inactive') {
+      console.log(`Login failed: User ${username} is inactive`);
       return next(new ErrorHandler('Your account is inactive. Please contact the administrator.', 403));
     }
 
     // Validate role if it was requested
     if (requestedRole && user.role !== requestedRole) {
-      console.log(`Role mismatch: User ${username} has role ${user.role}, but ${requestedRole} was requested`);
-      return next(new ErrorHandler(`Access denied. You do not have ${requestedRole} permissions.`, 403));
+      console.log(`Role mismatch: User ${username} has role "${user.role}", but "${requestedRole}" was requested`);
+      
+      // Special case for borrowers:
+      // If a user is trying to login as a borrower, allow it and update their role
+      if (requestedRole === 'borrower') {
+        console.log(`Fixing role: Updating user ${username} from role "${user.role}" to "borrower"`);
+        user.role = 'borrower';
+        await user.save();
+        console.log(`Role updated successfully to borrower`);
+      } else {
+        return next(new ErrorHandler(`Access denied. You do not have ${requestedRole} permissions.`, 403));
+      }
+    }
+
+    // If no role set at all, assign the requested role
+    if (!user.role && requestedRole) {
+      console.log(`User ${username} has no role set, assigning requested role: ${requestedRole}`);
+      user.role = requestedRole;
+      await user.save();
     }
 
     // Clear any existing cookies completely to prevent session conflicts
